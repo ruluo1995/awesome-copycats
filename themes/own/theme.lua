@@ -79,7 +79,6 @@ theme.spr_left                                  = theme.icon_dir .. "/spr_left.p
 theme.bar                                       = theme.icon_dir .. "/bar.png"
 theme.top_bar                                   = theme.icon_dir .. "/top_bar.png"
 -- Separators end
-theme.cpu                                       = theme.icon_dir .. "/cpu.png"
 theme.net_up                                    = theme.icon_dir .. "/net_up.png"
 theme.net_down                                  = theme.icon_dir .. "/net_down.png"
 theme.layout_fairh                              = theme.default_dir.."/layouts/fairhw.png"
@@ -229,7 +228,6 @@ theme.volume = lain.widget.alsabar({
     notification_preset = { font = "Monospace 12", fg = theme.fg_normal },
     settings = function()
         local index, perc = "", tonumber(volume_now.level) or 0
-
         if volume_now.status == "off" then
             index = "volmutedblocked"
         else
@@ -243,7 +241,6 @@ theme.volume = lain.widget.alsabar({
                 index = "volhigh"
             end
         end
-
         volicon:set_image(theme[index])
     end
 })
@@ -331,16 +328,33 @@ local weathericonbg = wibox.container.background(theme.weather.icon, theme.bg_fo
 local weathericonwidget = wibox.container.margin(weathericonbg, dpi(0), dpi(0), dpi(5), dpi(5))
 
 -- CPU
-local space = markup.font("Monospace 10", "")
-local cpu_icon = wibox.widget.imagebox(theme.cpu)
+local space = markup.font(theme.font, "")
 local cpu = lain.widget.cpu({
     settings = function()
-       widget:set_markup(space .. markup.font(theme.font, "CPU " .. cpu_now.usage
-                         .. "% ") .. space)
+       widget:set_markup(markup.font(theme.font, "  CPU " .. cpu_now.usage
+                         .. "% "))
     end
 })
 local cpubg = wibox.container.background(cpu.widget, theme.bg_focus, gears.shape.rectangle)
 local cpuwidget = wibox.container.margin(cpubg, dpi(0), dpi(0), dpi(5), dpi(5))
+
+-- Coretemp
+local temp = lain.widget.temp({
+    settings = function()
+        widget:set_markup(markup.font(theme.font, "  " .. coretemp_now .. "°C "))
+    end
+})
+local tempbg = wibox.container.background(temp.widget, theme.bg_focus, gears.shape.rectangle)
+local tempwidget = wibox.container.margin(tempbg, dpi(0), dpi(0), dpi(5), dpi(5))
+
+-- MEM
+local memory = lain.widget.mem({
+    settings = function()
+        widget:set_markup(markup.font(theme.font, "  " .. mem_now.used .. "M "))
+    end
+})
+local memorybg = wibox.container.background(memory.widget, theme.bg_focus, gears.shape.rectangle)
+local memorywidget = wibox.container.margin(memorybg, dpi(0), dpi(0), dpi(5), dpi(5))
 
 -- Net
 local netdown_icon = wibox.widget.imagebox(theme.net_down)
@@ -353,6 +367,41 @@ local net = lain.widget.net({
 })
 local netbg = wibox.container.background(net.widget, theme.bg_focus, gears.shape.rectangle)
 local networkwidget = wibox.container.margin(netbg, dpi(0), dpi(0), dpi(5), dpi(5))
+
+
+-- / fs
+--[[ commented because it needs Gio/Glib >= 2.54
+local fsicon = wibox.widget.imagebox(theme.widget_fs)
+theme.fs = lain.widget.fs({
+    notification_preset = { font = "xos4 Terminus 10", fg = theme.fg_normal },
+    settings  = function()
+        widget:set_markup(markup.fontfg(theme.font, "#80d9d8", string.format("%.1f", fs_now["/"].used) .. "% "))
+    end
+})
+--]]
+
+-- Mail IMAP check
+--[[ commented because it needs to be set before use
+local mailicon = wibox.widget.imagebox()
+theme.mail = lain.widget.imap({
+    timeout  = 180,
+    server   = "server",
+    mail     = "mail",
+    password = "keyring get mail",
+    settings = function()
+        if mailcount > 0 then
+            mailicon:set_image(theme.widget_mail)
+            widget:set_markup(markup.fontfg(theme.font, "#cccccc", mailcount .. " "))
+        else
+            widget:set_text("")
+            --mailicon:set_image() -- not working in 4.0
+            mailicon._private.image = nil
+            mailicon:emit_signal("widget::redraw_needed")
+            mailicon:emit_signal("widget::layout_changed")
+        end
+    end
+})
+--]]
 
 -- Launcher
 local mylauncher = awful.widget.button({image = theme.awesome_icon})
@@ -590,8 +639,11 @@ function theme.at_screen_connect(s)
             networkwidget,
             netup_icon,
             top_bar,
-            cpu_icon,
             cpuwidget,
+            top_bar,
+            memorywidget,
+            top_bar,
+            tempwidget,
             -- rspace0,
             top_bar,
             -- theme.weather.icon,
